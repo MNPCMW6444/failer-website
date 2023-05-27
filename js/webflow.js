@@ -13,6 +13,204 @@
     return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
   };
 
+  // shared/render/plugins/BackgroundVideo/objectFitPolyfill.basic.js
+  var require_objectFitPolyfill_basic = __commonJS({
+    "shared/render/plugins/BackgroundVideo/objectFitPolyfill.basic.js"() {
+      (function() {
+        if (typeof window === "undefined")
+          return;
+        const edgeVersion = window.navigator.userAgent.match(/Edge\/(\d{2})\./);
+        const edgePartialSupport = edgeVersion ? parseInt(edgeVersion[1], 10) >= 16 : false;
+        const hasSupport = "objectFit" in document.documentElement.style !== false;
+        if (hasSupport && !edgePartialSupport) {
+          window.objectFitPolyfill = function() {
+            return false;
+          };
+          return;
+        }
+        const checkParentContainer = function($container) {
+          const styles = window.getComputedStyle($container, null);
+          const position = styles.getPropertyValue("position");
+          const overflow = styles.getPropertyValue("overflow");
+          const display = styles.getPropertyValue("display");
+          if (!position || position === "static") {
+            $container.style.position = "relative";
+          }
+          if (overflow !== "hidden") {
+            $container.style.overflow = "hidden";
+          }
+          if (!display || display === "inline") {
+            $container.style.display = "block";
+          }
+          if ($container.clientHeight === 0) {
+            $container.style.height = "100%";
+          }
+          if ($container.className.indexOf("object-fit-polyfill") === -1) {
+            $container.className += " object-fit-polyfill";
+          }
+        };
+        const checkMediaProperties = function($media) {
+          const styles = window.getComputedStyle($media, null);
+          const constraints = {
+            "max-width": "none",
+            "max-height": "none",
+            "min-width": "0px",
+            "min-height": "0px",
+            top: "auto",
+            right: "auto",
+            bottom: "auto",
+            left: "auto",
+            "margin-top": "0px",
+            "margin-right": "0px",
+            "margin-bottom": "0px",
+            "margin-left": "0px"
+          };
+          for (const property in constraints) {
+            const constraint = styles.getPropertyValue(property);
+            if (constraint !== constraints[property]) {
+              $media.style[property] = constraints[property];
+            }
+          }
+        };
+        const objectFit = function($media) {
+          const $container = $media.parentNode;
+          checkParentContainer($container);
+          checkMediaProperties($media);
+          $media.style.position = "absolute";
+          $media.style.height = "100%";
+          $media.style.width = "auto";
+          if ($media.clientWidth > $container.clientWidth) {
+            $media.style.top = "0";
+            $media.style.marginTop = "0";
+            $media.style.left = "50%";
+            $media.style.marginLeft = $media.clientWidth / -2 + "px";
+          } else {
+            $media.style.width = "100%";
+            $media.style.height = "auto";
+            $media.style.left = "0";
+            $media.style.marginLeft = "0";
+            $media.style.top = "50%";
+            $media.style.marginTop = $media.clientHeight / -2 + "px";
+          }
+        };
+        const objectFitPolyfill = function(media) {
+          if (typeof media === "undefined" || media instanceof Event) {
+            media = document.querySelectorAll("[data-object-fit]");
+          } else if (media && media.nodeName) {
+            media = [media];
+          } else if (typeof media === "object" && media.length && media[0].nodeName) {
+            media = media;
+          } else {
+            return false;
+          }
+          for (let i = 0; i < media.length; i++) {
+            if (!media[i].nodeName)
+              continue;
+            const mediaType = media[i].nodeName.toLowerCase();
+            if (mediaType === "img") {
+              if (edgePartialSupport)
+                continue;
+              if (media[i].complete) {
+                objectFit(media[i]);
+              } else {
+                media[i].addEventListener("load", function() {
+                  objectFit(this);
+                });
+              }
+            } else if (mediaType === "video") {
+              if (media[i].readyState > 0) {
+                objectFit(media[i]);
+              } else {
+                media[i].addEventListener("loadedmetadata", function() {
+                  objectFit(this);
+                });
+              }
+            } else {
+              objectFit(media[i]);
+            }
+          }
+          return true;
+        };
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", objectFitPolyfill);
+        } else {
+          objectFitPolyfill();
+        }
+        window.addEventListener("resize", objectFitPolyfill);
+        window.objectFitPolyfill = objectFitPolyfill;
+      })();
+    }
+  });
+
+  // shared/render/plugins/BackgroundVideo/webflow-bgvideo.js
+  var require_webflow_bgvideo = __commonJS({
+    "shared/render/plugins/BackgroundVideo/webflow-bgvideo.js"() {
+      (function() {
+        if (typeof window === "undefined")
+          return;
+        function setAllBackgroundVideoStates(shouldPlay) {
+          if (Webflow.env("design")) {
+            return;
+          }
+          $("video").each(function() {
+            shouldPlay && $(this).prop("autoplay") ? this.play() : this.pause();
+          });
+          $(".w-background-video--control").each(function() {
+            if (shouldPlay) {
+              showPauseButton($(this));
+            } else {
+              showPlayButton($(this));
+            }
+          });
+        }
+        function showPlayButton($btn) {
+          $btn.find("> span").each(function(i) {
+            $(this).prop("hidden", () => i === 0);
+          });
+        }
+        function showPauseButton($btn) {
+          $btn.find("> span").each(function(i) {
+            $(this).prop("hidden", () => i === 1);
+          });
+        }
+        $(document).ready(() => {
+          const watcher = window.matchMedia("(prefers-reduced-motion: reduce)");
+          watcher.addEventListener("change", (e) => {
+            setAllBackgroundVideoStates(!e.matches);
+          });
+          if (watcher.matches) {
+            setAllBackgroundVideoStates(false);
+          }
+          $("video:not([autoplay])").each(function() {
+            $(this).parent().find(".w-background-video--control").each(function() {
+              showPlayButton($(this));
+            });
+          });
+          $(document).on("click", ".w-background-video--control", function(e) {
+            if (Webflow.env("design"))
+              return;
+            const btn = $(e.currentTarget);
+            const video = $(`video#${btn.attr("aria-controls")}`).get(0);
+            if (!video)
+              return;
+            if (video.paused) {
+              const play = video.play();
+              showPauseButton(btn);
+              if (play && typeof play.catch === "function") {
+                play.catch(() => {
+                  showPlayButton(btn);
+                });
+              }
+            } else {
+              video.pause();
+              showPlayButton(btn);
+            }
+          });
+        });
+      })();
+    }
+  });
+
   // shared/render/plugins/BaseSiteModules/tram-min.js
   var require_tram_min = __commonJS({
     "shared/render/plugins/BaseSiteModules/tram-min.js"() {
@@ -45,7 +243,7 @@
           if (void 0 !== b2 && (c2 = b2), void 0 === a2)
             return c2;
           var d2 = c2;
-          return $.test(a2) || !_.test(a2) ? d2 = parseInt(a2, 10) : _.test(a2) && (d2 = 1e3 * parseFloat(a2)), 0 > d2 && (d2 = 0), d2 === d2 ? d2 : c2;
+          return $2.test(a2) || !_.test(a2) ? d2 = parseInt(a2, 10) : _.test(a2) && (d2 = 1e3 * parseFloat(a2)), 0 > d2 && (d2 = 0), d2 === d2 ? d2 : c2;
         }
         function j(a2) {
           U.debug && window && window.console.warn(a2);
@@ -723,7 +921,7 @@
           skewX: [x],
           skewY: [x]
         }), G.transform && G.backface && (Z.z = [w, "translateZ"], Z.rotateZ = [x], Z.scaleZ = [t], Z.perspective = [v]);
-        var $ = /ms/, _ = /s|\./;
+        var $2 = /ms/, _ = /s|\./;
         return a.tram = b;
       }(window.jQuery);
     }
@@ -732,8 +930,8 @@
   // shared/render/plugins/BaseSiteModules/underscore-custom.js
   var require_underscore_custom = __commonJS({
     "shared/render/plugins/BaseSiteModules/underscore-custom.js"(exports, module) {
-      var $ = window.$;
-      var tram = require_tram_min() && $.tram;
+      var $2 = window.$;
+      var tram = require_tram_min() && $2.tram;
       module.exports = function() {
         var _ = {};
         _.VERSION = "1.6.0-Webflow";
@@ -968,33 +1166,33 @@
   // shared/render/plugins/BaseSiteModules/webflow-lib.js
   var require_webflow_lib = __commonJS({
     "shared/render/plugins/BaseSiteModules/webflow-lib.js"(exports, module) {
-      var Webflow = {};
+      var Webflow2 = {};
       var modules = {};
       var primary = [];
       var secondary = window.Webflow || [];
-      var $ = window.jQuery;
-      var $win = $(window);
-      var $doc = $(document);
-      var isFunction = $.isFunction;
-      var _ = Webflow._ = require_underscore_custom();
-      var tram = Webflow.tram = require_tram_min() && $.tram;
+      var $2 = window.jQuery;
+      var $win = $2(window);
+      var $doc = $2(document);
+      var isFunction = $2.isFunction;
+      var _ = Webflow2._ = require_underscore_custom();
+      var tram = Webflow2.tram = require_tram_min() && $2.tram;
       var domready = false;
       var destroyed = false;
       tram.config.hideBackface = false;
       tram.config.keepInherited = true;
-      Webflow.define = function(name, factory, options) {
+      Webflow2.define = function(name, factory, options) {
         if (modules[name]) {
           unbindModule(modules[name]);
         }
-        var instance = modules[name] = factory($, _, options) || {};
+        var instance = modules[name] = factory($2, _, options) || {};
         bindModule(instance);
         return instance;
       };
-      Webflow.require = function(name) {
+      Webflow2.require = function(name) {
         return modules[name];
       };
       function bindModule(module2) {
-        if (Webflow.env()) {
+        if (Webflow2.env()) {
           isFunction(module2.design) && $win.on("__wf_design", module2.design);
           isFunction(module2.preview) && $win.on("__wf_preview", module2.preview);
         }
@@ -1026,14 +1224,14 @@
           return readyFn !== module2.ready;
         });
       }
-      Webflow.push = function(ready) {
+      Webflow2.push = function(ready) {
         if (domready) {
           isFunction(ready) && ready();
           return;
         }
         secondary.push(ready);
       };
-      Webflow.env = function(mode) {
+      Webflow2.env = function(mode) {
         var designFlag = window.__wf_design;
         var inApp = typeof designFlag !== "undefined";
         if (!mode) {
@@ -1059,24 +1257,24 @@
         }
       };
       var userAgent = navigator.userAgent.toLowerCase();
-      var touch = Webflow.env.touch = "ontouchstart" in window || window.DocumentTouch && document instanceof window.DocumentTouch;
-      var chrome = Webflow.env.chrome = /chrome/.test(userAgent) && /Google/.test(navigator.vendor) && parseInt(userAgent.match(/chrome\/(\d+)\./)[1], 10);
-      var ios = Webflow.env.ios = /(ipod|iphone|ipad)/.test(userAgent);
-      Webflow.env.safari = /safari/.test(userAgent) && !chrome && !ios;
+      var touch = Webflow2.env.touch = "ontouchstart" in window || window.DocumentTouch && document instanceof window.DocumentTouch;
+      var chrome = Webflow2.env.chrome = /chrome/.test(userAgent) && /Google/.test(navigator.vendor) && parseInt(userAgent.match(/chrome\/(\d+)\./)[1], 10);
+      var ios = Webflow2.env.ios = /(ipod|iphone|ipad)/.test(userAgent);
+      Webflow2.env.safari = /safari/.test(userAgent) && !chrome && !ios;
       var touchTarget;
       touch && $doc.on("touchstart mousedown", function(evt) {
         touchTarget = evt.target;
       });
-      Webflow.validClick = touch ? function(clickTarget) {
-        return clickTarget === touchTarget || $.contains(clickTarget, touchTarget);
+      Webflow2.validClick = touch ? function(clickTarget) {
+        return clickTarget === touchTarget || $2.contains(clickTarget, touchTarget);
       } : function() {
         return true;
       };
       var resizeEvents = "resize.webflow orientationchange.webflow load.webflow";
       var scrollEvents = "scroll.webflow " + resizeEvents;
-      Webflow.resize = eventProxy($win, resizeEvents);
-      Webflow.scroll = eventProxy($win, scrollEvents);
-      Webflow.redraw = eventProxy();
+      Webflow2.resize = eventProxy($win, resizeEvents);
+      Webflow2.scroll = eventProxy($win, scrollEvents);
+      Webflow2.redraw = eventProxy();
       function eventProxy(target, types) {
         var handlers = [];
         var proxy = {};
@@ -1108,14 +1306,14 @@
         };
         return proxy;
       }
-      Webflow.location = function(url) {
+      Webflow2.location = function(url) {
         window.location = url;
       };
-      if (Webflow.env()) {
-        Webflow.location = function() {
+      if (Webflow2.env()) {
+        Webflow2.location = function() {
         };
       }
-      Webflow.ready = function() {
+      Webflow2.ready = function() {
         domready = true;
         if (destroyed) {
           restoreModules();
@@ -1123,7 +1321,7 @@
           _.each(primary, callReady);
         }
         _.each(secondary, callReady);
-        Webflow.resize.up();
+        Webflow2.resize.up();
       };
       function callReady(readyFn) {
         isFunction(readyFn) && readyFn();
@@ -1133,7 +1331,7 @@
         _.each(modules, bindModule);
       }
       var deferLoad;
-      Webflow.load = function(handler) {
+      Webflow2.load = function(handler) {
         deferLoad.then(handler);
       };
       function bindLoad() {
@@ -1141,10 +1339,10 @@
           deferLoad.reject();
           $win.off("load", deferLoad.resolve);
         }
-        deferLoad = new $.Deferred();
+        deferLoad = new $2.Deferred();
         $win.on("load", deferLoad.resolve);
       }
-      Webflow.destroy = function(options) {
+      Webflow2.destroy = function(options) {
         options = options || {};
         destroyed = true;
         $win.triggerHandler("__wf_destroy");
@@ -1152,30 +1350,30 @@
           domready = options.domready;
         }
         _.each(modules, unbindModule);
-        Webflow.resize.off();
-        Webflow.scroll.off();
-        Webflow.redraw.off();
+        Webflow2.resize.off();
+        Webflow2.scroll.off();
+        Webflow2.redraw.off();
         primary = [];
         secondary = [];
         if (deferLoad.state() === "pending") {
           bindLoad();
         }
       };
-      $(Webflow.ready);
+      $2(Webflow2.ready);
       bindLoad();
-      module.exports = window.Webflow = Webflow;
+      module.exports = window.Webflow = Webflow2;
     }
   });
 
   // shared/render/plugins/BaseSiteModules/webflow-brand.js
   var require_webflow_brand = __commonJS({
     "shared/render/plugins/BaseSiteModules/webflow-brand.js"(exports, module) {
-      var Webflow = require_webflow_lib();
-      Webflow.define("brand", module.exports = function($) {
+      var Webflow2 = require_webflow_lib();
+      Webflow2.define("brand", module.exports = function($2) {
         var api = {};
         var doc = document;
-        var $html = $("html");
-        var $body = $("body");
+        var $html = $2("html");
+        var $body = $2("body");
         var namespace = ".w-webflow-badge";
         var location = window.location;
         var isPhantom = /PhantomJS/i.test(navigator.userAgent);
@@ -1191,27 +1389,27 @@
             brandElement = brandElement || createBadge();
             ensureBrand();
             setTimeout(ensureBrand, 500);
-            $(doc).off(fullScreenEvents, onFullScreenChange).on(fullScreenEvents, onFullScreenChange);
+            $2(doc).off(fullScreenEvents, onFullScreenChange).on(fullScreenEvents, onFullScreenChange);
           }
         };
         function onFullScreenChange() {
           var fullScreen = doc.fullScreen || doc.mozFullScreen || doc.webkitIsFullScreen || doc.msFullscreenElement || Boolean(doc.webkitFullscreenElement);
-          $(brandElement).attr("style", fullScreen ? "display: none !important;" : "");
+          $2(brandElement).attr("style", fullScreen ? "display: none !important;" : "");
         }
         function createBadge() {
-          var $brand = $('<a class="w-webflow-badge"></a>').attr("href", "https://webflow.com?utm_campaign=brandjs");
-          var $logoArt = $("<img>").attr("src", "https://d3e54v103j8qbb.cloudfront.net/img/webflow-badge-icon.f67cd735e3.svg").attr("alt", "").css({
+          var $brand = $2('<a class="w-webflow-badge"></a>').attr("href", "https://webflow.com?utm_campaign=brandjs");
+          var $logoArt = $2("<img>").attr("src", "https://d3e54v103j8qbb.cloudfront.net/img/webflow-badge-icon.f67cd735e3.svg").attr("alt", "").css({
             marginRight: "8px",
             width: "16px"
           });
-          var $logoText = $("<img>").attr("src", "https://d1otoma47x30pg.cloudfront.net/img/webflow-badge-text.6faa6a38cd.svg").attr("alt", "Made in Webflow");
+          var $logoText = $2("<img>").attr("src", "https://d1otoma47x30pg.cloudfront.net/img/webflow-badge-text.6faa6a38cd.svg").attr("alt", "Made in Webflow");
           $brand.append($logoArt, $logoText);
           return $brand[0];
         }
         function ensureBrand() {
           var found = $body.children(namespace);
           var match = found.length && found.get(0) === brandElement;
-          var inEditor = Webflow.env("editor");
+          var inEditor = Webflow2.env("editor");
           if (match) {
             if (inEditor) {
               found.remove();
@@ -1233,8 +1431,8 @@
   // shared/render/plugins/BaseSiteModules/webflow-focus-visible.js
   var require_webflow_focus_visible = __commonJS({
     "shared/render/plugins/BaseSiteModules/webflow-focus-visible.js"(exports, module) {
-      var Webflow = require_webflow_lib();
-      Webflow.define("focus-visible", module.exports = function() {
+      var Webflow2 = require_webflow_lib();
+      Webflow2.define("focus-visible", module.exports = function() {
         function applyFocusVisiblePolyfill(scope) {
           var hadKeyboardEvent = true;
           var hadFocusVisibleRecently = false;
@@ -1384,8 +1582,8 @@
   // shared/render/plugins/BaseSiteModules/webflow-focus.js
   var require_webflow_focus = __commonJS({
     "shared/render/plugins/BaseSiteModules/webflow-focus.js"(exports, module) {
-      var Webflow = require_webflow_lib();
-      Webflow.define("focus", module.exports = function() {
+      var Webflow2 = require_webflow_lib();
+      Webflow2.define("focus", module.exports = function() {
         var capturedEvents = [];
         var capturing = false;
         function captureEvent(e) {
@@ -1420,7 +1618,7 @@
           }
         }
         function ready() {
-          if (typeof document !== "undefined" && document.body.hasAttribute("data-wf-focus-within") && Webflow.env.safari) {
+          if (typeof document !== "undefined" && document.body.hasAttribute("data-wf-focus-within") && Webflow2.env.safari) {
             document.addEventListener("mousedown", handler, true);
             document.addEventListener("mouseup", captureEvent, true);
             document.addEventListener("click", captureEvent, true);
@@ -1437,7 +1635,7 @@
   var require_webflow_ix_events = __commonJS({
     "shared/render/plugins/BaseSiteModules/webflow-ix-events.js"(exports, module) {
       "use strict";
-      var $ = window.jQuery;
+      var $2 = window.jQuery;
       var api = {};
       var eventQueue = [];
       var namespace = ".w-ix";
@@ -1450,14 +1648,14 @@
             return;
           }
           el.__wf_intro = true;
-          $(el).triggerHandler(api.types.INTRO);
+          $2(el).triggerHandler(api.types.INTRO);
         },
         outro: function(i, el) {
           if (!el.__wf_intro) {
             return;
           }
           el.__wf_intro = null;
-          $(el).triggerHandler(api.types.OUTRO);
+          $2(el).triggerHandler(api.types.OUTRO);
         }
       };
       api.triggers = {};
@@ -1472,7 +1670,7 @@
           memo[0](0, memo[1]);
         }
         eventQueue = [];
-        $.extend(api.triggers, eventTriggers);
+        $2.extend(api.triggers, eventTriggers);
       };
       api.async = function() {
         for (var key in eventTriggers) {
@@ -1500,7 +1698,7 @@
         event.initCustomEvent(eventName, true, true, null);
         element.dispatchEvent(event);
       }
-      var $ = window.jQuery;
+      var $2 = window.jQuery;
       var api = {};
       var namespace = ".w-ix";
       var eventTriggers = {
@@ -1521,7 +1719,7 @@
         INTRO: "w-ix-intro" + namespace,
         OUTRO: "w-ix-outro" + namespace
       };
-      $.extend(api.triggers, eventTriggers);
+      $2.extend(api.triggers, eventTriggers);
       module.exports = api;
     }
   });
@@ -2772,10 +2970,10 @@
   var require_es_array_includes = __commonJS({
     "node_modules/core-js/modules/es.array.includes.js"() {
       "use strict";
-      var $ = require_export();
+      var $2 = require_export();
       var $includes = require_array_includes().includes;
       var addToUnscopables = require_add_to_unscopables();
-      $({ target: "Array", proto: true }, {
+      $2({ target: "Array", proto: true }, {
         includes: function includes(el) {
           return $includes(this, el, arguments.length > 1 ? arguments[1] : void 0);
         }
@@ -12035,10 +12233,10 @@
   // shared/render/plugins/BaseSiteModules/webflow-ix2.js
   var require_webflow_ix2 = __commonJS({
     "shared/render/plugins/BaseSiteModules/webflow-ix2.js"(exports, module) {
-      var Webflow = require_webflow_lib();
+      var Webflow2 = require_webflow_lib();
       var ix2 = require_engine();
-      ix2.setEnv(Webflow.env);
-      Webflow.define("ix2", module.exports = function() {
+      ix2.setEnv(Webflow2.env);
+      Webflow2.define("ix2", module.exports = function() {
         return ix2;
       });
     }
@@ -12047,12 +12245,12 @@
   // shared/render/plugins/BaseSiteModules/webflow-links.js
   var require_webflow_links = __commonJS({
     "shared/render/plugins/BaseSiteModules/webflow-links.js"(exports, module) {
-      var Webflow = require_webflow_lib();
-      Webflow.define("links", module.exports = function($, _) {
+      var Webflow2 = require_webflow_lib();
+      Webflow2.define("links", module.exports = function($2, _) {
         var api = {};
-        var $win = $(window);
+        var $win = $2(window);
         var designer;
-        var inApp = Webflow.env();
+        var inApp = Webflow2.env();
         var location = window.location;
         var tempLink = document.createElement("a");
         var linkCurrent = "w--current";
@@ -12062,16 +12260,16 @@
         var slug;
         api.ready = api.design = api.preview = init;
         function init() {
-          designer = inApp && Webflow.env("design");
-          slug = Webflow.env("slug") || location.pathname || "";
-          Webflow.scroll.off(scroll);
+          designer = inApp && Webflow2.env("design");
+          slug = Webflow2.env("slug") || location.pathname || "";
+          Webflow2.scroll.off(scroll);
           anchors = [];
           var links = document.links;
           for (var i = 0; i < links.length; ++i) {
             select(links[i]);
           }
           if (anchors.length) {
-            Webflow.scroll.on(scroll);
+            Webflow2.scroll.on(scroll);
             scroll();
           }
         }
@@ -12081,12 +12279,12 @@
           if (href.indexOf(":") >= 0) {
             return;
           }
-          var $link = $(link);
+          var $link = $2(link);
           if (tempLink.hash.length > 1 && tempLink.host + tempLink.pathname === location.host + location.pathname) {
             if (!/^#[a-zA-Z0-9\-\_]+$/.test(tempLink.hash)) {
               return;
             }
-            var $section = $(tempLink.hash);
+            var $section = $2(tempLink.hash);
             $section.length && anchors.push({
               link: $link,
               sec: $section,
@@ -12135,21 +12333,21 @@
   // shared/render/plugins/BaseSiteModules/webflow-scroll.js
   var require_webflow_scroll = __commonJS({
     "shared/render/plugins/BaseSiteModules/webflow-scroll.js"(exports, module) {
-      var Webflow = require_webflow_lib();
-      Webflow.define("scroll", module.exports = function($) {
+      var Webflow2 = require_webflow_lib();
+      Webflow2.define("scroll", module.exports = function($2) {
         var NS_EVENTS = {
           WF_CLICK_EMPTY: "click.wf-empty-link",
           WF_CLICK_SCROLL: "click.wf-scroll"
         };
         var loc = window.location;
         var history = inIframe() ? null : window.history;
-        var $win = $(window);
-        var $doc = $(document);
-        var $body = $(document.body);
+        var $win = $2(window);
+        var $doc = $2(document);
+        var $body = $2(document.body);
         var animate = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || function(fn) {
           window.setTimeout(fn, 15);
         };
-        var rootTag = Webflow.env("editor") ? ".w-editor-body" : "body";
+        var rootTag = Webflow2.env("editor") ? ".w-editor-body" : "body";
         var headerSelector = "header, " + rootTag + " > .header, " + rootTag + " > .w-nav:not([data-no-scroll])";
         var emptyHrefSelector = 'a[href="#"]';
         var localHrefSelector = 'a[href*="#"]:not(.w-tab-link):not(' + emptyHrefSelector + ")";
@@ -12198,7 +12396,7 @@
           var target = evt.currentTarget;
           if (
             // Bail if in Designer
-            Webflow.env("design") || // Ignore links being used by jQuery mobile
+            Webflow2.env("design") || // Ignore links being used by jQuery mobile
             window.$.mobile && /(?:^|\s)ui-link(?:$|\s)/.test(target.className)
           ) {
             return;
@@ -12206,7 +12404,7 @@
           var hash = linksToCurrentPage(target) ? target.hash : "";
           if (hash === "")
             return;
-          var $el = $(hash);
+          var $el = $2(hash);
           if (!$el.length) {
             return;
           }
@@ -12227,7 +12425,7 @@
         }
         function updateHistory(hash) {
           if (loc.hash !== hash && history && history.pushState && // Navigation breaks Chrome when the protocol is `file:`.
-          !(Webflow.env.chrome && loc.protocol === "file:")) {
+          !(Webflow2.env.chrome && loc.protocol === "file:")) {
             var oldHash = history.state && history.state.hash;
             if (oldHash !== hash) {
               history.pushState({
@@ -12255,7 +12453,7 @@
           animate(step);
         }
         function calculateScrollEndPosition($targetEl) {
-          var $header = $(headerSelector);
+          var $header = $2(headerSelector);
           var offsetY = $header.css("position") === "fixed" ? $header.outerHeight() : 0;
           var end = $targetEl.offset().top - offsetY;
           if ($targetEl.data("scroll") === "mid") {
@@ -12309,16 +12507,16 @@
   // shared/render/plugins/BaseSiteModules/webflow-touch.js
   var require_webflow_touch = __commonJS({
     "shared/render/plugins/BaseSiteModules/webflow-touch.js"(exports, module) {
-      var Webflow = require_webflow_lib();
-      Webflow.define("touch", module.exports = function($) {
+      var Webflow2 = require_webflow_lib();
+      Webflow2.define("touch", module.exports = function($2) {
         var api = {};
         var getSelection = window.getSelection;
-        $.event.special.tap = {
+        $2.event.special.tap = {
           bindType: "click",
           delegateType: "click"
         };
         api.init = function(el) {
-          el = typeof el === "string" ? $(el).get(0) : el;
+          el = typeof el === "string" ? $2(el).get(0) : el;
           return el ? new Touch(el) : null;
         };
         function Touch(el) {
@@ -12398,10 +12596,10 @@
           this.destroy = destroy;
         }
         function triggerEvent(type, evt, data) {
-          var newEvent = $.Event(type, {
+          var newEvent = $2.Event(type, {
             originalEvent: evt
           });
-          $(evt.target).trigger(newEvent, data);
+          $2(evt.target).trigger(newEvent, data);
         }
         api.instance = api.init(document);
         return api;
@@ -12412,10 +12610,10 @@
   // shared/render/plugins/Form/webflow-forms.js
   var require_webflow_forms = __commonJS({
     "shared/render/plugins/Form/webflow-forms.js"(exports, module) {
-      var Webflow = require_webflow_lib();
-      Webflow.define("forms", module.exports = function($, _) {
+      var Webflow2 = require_webflow_lib();
+      Webflow2.define("forms", module.exports = function($2, _) {
         var api = {};
-        var $doc = $(document);
+        var $doc = $2(document);
         var $forms;
         var loc = window.location;
         var retro = window.XDomainRequest && !window.atob;
@@ -12424,7 +12622,7 @@
         var emailField = /e(-)?mail/i;
         var emailValue = /^\S+@\S+$/;
         var alert = window.alert;
-        var inApp = Webflow.env();
+        var inApp = Webflow2.env();
         var listening;
         var formUrl;
         var signFileUrl;
@@ -12439,23 +12637,23 @@
           }
         };
         function init() {
-          siteId = $("html").attr("data-wf-site");
+          siteId = $2("html").attr("data-wf-site");
           formUrl = "https://webflow.com/api/v1/form/" + siteId;
           if (retro && formUrl.indexOf("https://webflow.com") >= 0) {
             formUrl = formUrl.replace("https://webflow.com", "https://formdata.webflow.com");
           }
           signFileUrl = `${formUrl}/signFile`;
-          $forms = $(namespace + " form");
+          $forms = $2(namespace + " form");
           if (!$forms.length) {
             return;
           }
           $forms.each(build);
         }
         function build(i, el) {
-          var $el = $(el);
-          var data = $.data(el, namespace);
+          var $el = $2(el);
+          var data = $2.data(el, namespace);
           if (!data) {
-            data = $.data(el, namespace, {
+            data = $2.data(el, namespace, {
               form: $el
             });
           }
@@ -12494,7 +12692,7 @@
           if (siteId) {
             data.handler = true ? exportedSubmitWebflow : (() => {
               const hostedSubmitHandler = null.default;
-              return hostedSubmitHandler(reset, loc, Webflow, collectEnterpriseTrackingCookies, preventDefault, findFields, alert, findFileUploads, disableBtn, siteId, afterSubmit, $, formUrl);
+              return hostedSubmitHandler(reset, loc, Webflow2, collectEnterpriseTrackingCookies, preventDefault, findFields, alert, findFileUploads, disableBtn, siteId, afterSubmit, $2, formUrl);
             })();
             return;
           }
@@ -12503,7 +12701,7 @@
         function addListeners() {
           listening = true;
           $doc.on("submit", namespace + " form", function(evt) {
-            var data = $.data(this, namespace);
+            var data = $2.data(this, namespace);
             if (data.handler) {
               data.evt = evt;
               data.handler(data);
@@ -12517,22 +12715,22 @@
           const focusVisibleSelectors = ":focus-visible, [data-wf-focus-visible]";
           const CUSTOM_CONTROLS = [["checkbox", CHECKBOX_CLASS_NAME], ["radio", RADIO_INPUT_CLASS_NAME]];
           $doc.on("change", namespace + ` form input[type="checkbox"]:not(` + CHECKBOX_CLASS_NAME + ")", (evt) => {
-            $(evt.target).siblings(CHECKBOX_CLASS_NAME).toggleClass(CHECKED_CLASS);
+            $2(evt.target).siblings(CHECKBOX_CLASS_NAME).toggleClass(CHECKED_CLASS);
           });
           $doc.on("change", namespace + ` form input[type="radio"]`, (evt) => {
-            $(`input[name="${evt.target.name}"]:not(${CHECKBOX_CLASS_NAME})`).map((i, el) => $(el).siblings(RADIO_INPUT_CLASS_NAME).removeClass(CHECKED_CLASS));
-            const $target = $(evt.target);
+            $2(`input[name="${evt.target.name}"]:not(${CHECKBOX_CLASS_NAME})`).map((i, el) => $2(el).siblings(RADIO_INPUT_CLASS_NAME).removeClass(CHECKED_CLASS));
+            const $target = $2(evt.target);
             if (!$target.hasClass("w-radio-input")) {
               $target.siblings(RADIO_INPUT_CLASS_NAME).addClass(CHECKED_CLASS);
             }
           });
           CUSTOM_CONTROLS.forEach(([controlType, customControlClassName]) => {
             $doc.on("focus", namespace + ` form input[type="${controlType}"]:not(` + customControlClassName + ")", (evt) => {
-              $(evt.target).siblings(customControlClassName).addClass(FOCUSED_CLASS);
-              $(evt.target).filter(focusVisibleSelectors).siblings(customControlClassName).addClass(FOCUSED_VISIBLE_CLASS);
+              $2(evt.target).siblings(customControlClassName).addClass(FOCUSED_CLASS);
+              $2(evt.target).filter(focusVisibleSelectors).siblings(customControlClassName).addClass(FOCUSED_VISIBLE_CLASS);
             });
             $doc.on("blur", namespace + ` form input[type="${controlType}"]:not(` + customControlClassName + ")", (evt) => {
-              $(evt.target).siblings(customControlClassName).removeClass(`${FOCUSED_CLASS} ${FOCUSED_VISIBLE_CLASS}`);
+              $2(evt.target).siblings(customControlClassName).removeClass(`${FOCUSED_CLASS} ${FOCUSED_VISIBLE_CLASS}`);
             });
           });
         }
@@ -12556,7 +12754,7 @@
           var status = null;
           result = result || {};
           form.find(':input:not([type="submit"]):not([type="file"])').each(function(i, el) {
-            var field = $(el);
+            var field = $2(el);
             var type = field.attr("type");
             var name = field.attr("data-name") || field.attr("name") || "Field " + (i + 1);
             var value = field.val();
@@ -12569,7 +12767,7 @@
               value = form.find('input[name="' + field.attr("name") + '"]:checked').val() || null;
             }
             if (typeof value === "string") {
-              value = $.trim(value);
+              value = $2.trim(value);
             }
             result[name] = value;
             status = status || getStatus(field, type, name, value);
@@ -12579,11 +12777,11 @@
         function findFileUploads(form) {
           var result = {};
           form.find(':input[type="file"]').each(function(i, el) {
-            var field = $(el);
+            var field = $2(el);
             var name = field.attr("data-name") || field.attr("name") || "File " + (i + 1);
             var value = field.attr("data-value");
             if (typeof value === "string") {
-              value = $.trim(value);
+              value = $2.trim(value);
             }
             result[name] = value;
           });
@@ -12667,7 +12865,7 @@
           var listId = url.indexOf("id=") + 3;
           listId = url.substring(listId, url.indexOf("&", listId));
           payload["b_" + userId + "_" + listId] = "";
-          $.ajax({
+          $2.ajax({
             url,
             data: payload,
             dataType: "jsonp"
@@ -12686,7 +12884,7 @@
           var redirect = data.redirect;
           var success = data.success;
           if (success && redirect) {
-            Webflow.location(redirect);
+            Webflow2.location(redirect);
             return;
           }
           data.done.toggle(success);
@@ -12708,7 +12906,7 @@
             return;
           }
           var file;
-          var $el = $(form.fileUploads[i]);
+          var $el = $2(form.fileUploads[i]);
           var $defaultWrap = $el.find("> .w-file-upload-default");
           var $uploadingWrap = $el.find("> .w-file-upload-uploading");
           var $successWrap = $el.find("> .w-file-upload-success");
@@ -12834,7 +13032,7 @@
             name: file.name,
             size: file.size
           });
-          $.ajax({
+          $2.ajax({
             type: "GET",
             url: `${signFileUrl}?${payload}`,
             crossDomain: true
@@ -12850,7 +13048,7 @@
             formData.append(k, data[k]);
           }
           formData.append("file", file, fileName);
-          $.ajax({
+          $2.ajax({
             type: "POST",
             url,
             data: formData,
@@ -12870,7 +13068,7 @@
   // shared/render/plugins/Navbar/webflow-navbar.js
   var require_webflow_navbar = __commonJS({
     "shared/render/plugins/Navbar/webflow-navbar.js"(exports, module) {
-      var Webflow = require_webflow_lib();
+      var Webflow2 = require_webflow_lib();
       var IXEvents = require_webflow_ix2_events();
       var KEY_CODES = {
         ARROW_LEFT: 37,
@@ -12883,17 +13081,17 @@
         HOME: 36,
         END: 35
       };
-      Webflow.define("navbar", module.exports = function($, _) {
+      Webflow2.define("navbar", module.exports = function($2, _) {
         var api = {};
-        var tram = $.tram;
-        var $win = $(window);
-        var $doc = $(document);
+        var tram = $2.tram;
+        var $win = $2(window);
+        var $doc = $2(document);
         var debounce = _.debounce;
         var $body;
         var $navbars;
         var designer;
         var inEditor;
-        var inApp = Webflow.env();
+        var inApp = Webflow2.env();
         var overlay = '<div class="w-nav-overlay" data-wf-ignore />';
         var namespace = ".w-nav";
         var navbarOpenedButton = "w--open";
@@ -12902,19 +13100,19 @@
         var navbarOpenedDropdownList = "w--nav-dropdown-list-open";
         var navbarOpenedLink = "w--nav-link-open";
         var ix = IXEvents.triggers;
-        var menuSibling = $();
+        var menuSibling = $2();
         api.ready = api.design = api.preview = init;
         api.destroy = function() {
-          menuSibling = $();
+          menuSibling = $2();
           removeListeners();
           if ($navbars && $navbars.length) {
             $navbars.each(teardown);
           }
         };
         function init() {
-          designer = inApp && Webflow.env("design");
-          inEditor = Webflow.env("editor");
-          $body = $(document.body);
+          designer = inApp && Webflow2.env("design");
+          inEditor = Webflow2.env("editor");
+          $body = $2(document.body);
           $navbars = $doc.find(namespace);
           if (!$navbars.length) {
             return;
@@ -12924,19 +13122,19 @@
           addListeners();
         }
         function removeListeners() {
-          Webflow.resize.off(resizeAll);
+          Webflow2.resize.off(resizeAll);
         }
         function addListeners() {
-          Webflow.resize.on(resizeAll);
+          Webflow2.resize.on(resizeAll);
         }
         function resizeAll() {
           $navbars.each(resize);
         }
         function build(i, el) {
-          var $el = $(el);
-          var data = $.data(el, namespace);
+          var $el = $2(el);
+          var data = $2.data(el, namespace);
           if (!data) {
-            data = $.data(el, namespace, {
+            data = $2.data(el, namespace, {
               open: false,
               el: $el,
               config: {},
@@ -12982,10 +13180,10 @@
           resize(i, el);
         }
         function teardown(i, el) {
-          var data = $.data(el, namespace);
+          var data = $2.data(el, namespace);
           if (data) {
             removeOverlay(data);
-            $.removeData(el, namespace);
+            $2.removeData(el, namespace);
           }
         }
         function removeOverlay(data) {
@@ -13000,7 +13198,7 @@
           if (data.overlay) {
             return;
           }
-          data.overlay = $(overlay).appendTo(data.el);
+          data.overlay = $2(overlay).appendTo(data.el);
           data.overlay.attr("id", data.overlayContainerId);
           data.parent = data.menu.parent();
           close(data, true);
@@ -13131,9 +13329,9 @@
         }
         function navigate(data) {
           return function(evt) {
-            var link = $(this);
+            var link = $2(this);
             var href = link.attr("href");
-            if (!Webflow.validClick(evt.currentTarget)) {
+            if (!Webflow2.validClick(evt.currentTarget)) {
               evt.preventDefault();
               return;
             }
@@ -13147,7 +13345,7 @@
             $doc.off("click" + namespace, data.outside);
           }
           return function(evt) {
-            var $target = $(evt.target);
+            var $target = $2(evt.target);
             if (inEditor && $target.closest(".w-editor-bem-EditorOverlay").length) {
               return;
             }
@@ -13164,7 +13362,7 @@
           }
         });
         function resize(i, el) {
-          var data = $.data(el, namespace);
+          var data = $2.data(el, namespace);
           var collapsed = data.collapsed = data.button.css("display") !== "none";
           if (data.open && !collapsed && !designer) {
             close(data, true);
@@ -13185,7 +13383,7 @@
             containMax = "";
           }
           return function(i, link) {
-            link = $(link);
+            link = $2(link);
             link.css(maxWidth, "");
             if (link.css(maxWidth) === "none") {
               link.css(maxWidth, containMax);
@@ -13221,7 +13419,7 @@
           var navbarEl = data.el[0];
           resize(0, navbarEl);
           ix.intro(0, navbarEl);
-          Webflow.redraw.up();
+          Webflow2.redraw.up();
           if (!designer) {
             $doc.on("click" + namespace, data.outside);
           }
@@ -13320,271 +13518,19 @@
     }
   });
 
-  // shared/render/plugins/Tabs/webflow-tabs.js
-  var require_webflow_tabs = __commonJS({
-    "shared/render/plugins/Tabs/webflow-tabs.js"(exports, module) {
-      var Webflow = require_webflow_lib();
-      var IXEvents = require_webflow_ix2_events();
-      Webflow.define("tabs", module.exports = function($) {
-        var api = {};
-        var tram = $.tram;
-        var $doc = $(document);
-        var $tabs;
-        var design;
-        var env = Webflow.env;
-        var safari = env.safari;
-        var inApp = env();
-        var tabAttr = "data-w-tab";
-        var paneAttr = "data-w-pane";
-        var namespace = ".w-tabs";
-        var linkCurrent = "w--current";
-        var tabActive = "w--tab-active";
-        var ix = IXEvents.triggers;
-        var inRedraw = false;
-        api.ready = api.design = api.preview = init;
-        api.redraw = function() {
-          inRedraw = true;
-          init();
-          inRedraw = false;
-        };
-        api.destroy = function() {
-          $tabs = $doc.find(namespace);
-          if (!$tabs.length) {
-            return;
-          }
-          $tabs.each(resetIX);
-          removeListeners();
-        };
-        function init() {
-          design = inApp && Webflow.env("design");
-          $tabs = $doc.find(namespace);
-          if (!$tabs.length) {
-            return;
-          }
-          $tabs.each(build);
-          if (Webflow.env("preview") && !inRedraw) {
-            $tabs.each(resetIX);
-          }
-          removeListeners();
-          addListeners();
-        }
-        function removeListeners() {
-          Webflow.redraw.off(api.redraw);
-        }
-        function addListeners() {
-          Webflow.redraw.on(api.redraw);
-        }
-        function resetIX(i, el) {
-          var data = $.data(el, namespace);
-          if (!data) {
-            return;
-          }
-          data.links && data.links.each(ix.reset);
-          data.panes && data.panes.each(ix.reset);
-        }
-        function build(i, el) {
-          var widgetHash = namespace.substr(1) + "-" + i;
-          var $el = $(el);
-          var data = $.data(el, namespace);
-          if (!data) {
-            data = $.data(el, namespace, {
-              el: $el,
-              config: {}
-            });
-          }
-          data.current = null;
-          data.tabIdentifier = widgetHash + "-" + tabAttr;
-          data.paneIdentifier = widgetHash + "-" + paneAttr;
-          data.menu = $el.children(".w-tab-menu");
-          data.links = data.menu.children(".w-tab-link");
-          data.content = $el.children(".w-tab-content");
-          data.panes = data.content.children(".w-tab-pane");
-          data.el.off(namespace);
-          data.links.off(namespace);
-          data.menu.attr("role", "tablist");
-          data.links.attr("tabindex", "-1");
-          configure(data);
-          if (!design) {
-            data.links.on("click" + namespace, linkSelect(data));
-            data.links.on("keydown" + namespace, handleLinkKeydown(data));
-            var $link = data.links.filter("." + linkCurrent);
-            var tab = $link.attr(tabAttr);
-            tab && changeTab(data, {
-              tab,
-              immediate: true
-            });
-          }
-        }
-        function configure(data) {
-          var config = {};
-          config.easing = data.el.attr("data-easing") || "ease";
-          var intro = parseInt(data.el.attr("data-duration-in"), 10);
-          intro = config.intro = intro === intro ? intro : 0;
-          var outro = parseInt(data.el.attr("data-duration-out"), 10);
-          outro = config.outro = outro === outro ? outro : 0;
-          config.immediate = !intro && !outro;
-          data.config = config;
-        }
-        function getActiveTabIdx(data) {
-          var tab = data.current;
-          return Array.prototype.findIndex.call(data.links, (t) => {
-            return t.getAttribute(tabAttr) === tab;
-          }, null);
-        }
-        function linkSelect(data) {
-          return function(evt) {
-            evt.preventDefault();
-            var tab = evt.currentTarget.getAttribute(tabAttr);
-            tab && changeTab(data, {
-              tab
-            });
-          };
-        }
-        function handleLinkKeydown(data) {
-          return function(evt) {
-            var currentIdx = getActiveTabIdx(data);
-            var keyName = evt.key;
-            var keyMap = {
-              ArrowLeft: currentIdx - 1,
-              ArrowUp: currentIdx - 1,
-              ArrowRight: currentIdx + 1,
-              ArrowDown: currentIdx + 1,
-              End: data.links.length - 1,
-              Home: 0
-            };
-            if (!(keyName in keyMap))
-              return;
-            evt.preventDefault();
-            var nextIdx = keyMap[keyName];
-            if (nextIdx === -1) {
-              nextIdx = data.links.length - 1;
-            }
-            if (nextIdx === data.links.length) {
-              nextIdx = 0;
-            }
-            var tabEl = data.links[nextIdx];
-            var tab = tabEl.getAttribute(tabAttr);
-            tab && changeTab(data, {
-              tab
-            });
-          };
-        }
-        function changeTab(data, options) {
-          options = options || {};
-          var config = data.config;
-          var easing = config.easing;
-          var tab = options.tab;
-          if (tab === data.current) {
-            return;
-          }
-          data.current = tab;
-          var currentTab;
-          data.links.each(function(i, el) {
-            var $el = $(el);
-            if (options.immediate || config.immediate) {
-              var pane = data.panes[i];
-              if (!el.id) {
-                el.id = data.tabIdentifier + "-" + i;
-              }
-              if (!pane.id) {
-                pane.id = data.paneIdentifier + "-" + i;
-              }
-              el.href = "#" + pane.id;
-              el.setAttribute("role", "tab");
-              el.setAttribute("aria-controls", pane.id);
-              el.setAttribute("aria-selected", "false");
-              pane.setAttribute("role", "tabpanel");
-              pane.setAttribute("aria-labelledby", el.id);
-            }
-            if (el.getAttribute(tabAttr) === tab) {
-              currentTab = el;
-              $el.addClass(linkCurrent).removeAttr("tabindex").attr({
-                "aria-selected": "true"
-              }).each(ix.intro);
-            } else if ($el.hasClass(linkCurrent)) {
-              $el.removeClass(linkCurrent).attr({
-                tabindex: "-1",
-                "aria-selected": "false"
-              }).each(ix.outro);
-            }
-          });
-          var targets = [];
-          var previous = [];
-          data.panes.each(function(i, el) {
-            var $el = $(el);
-            if (el.getAttribute(tabAttr) === tab) {
-              targets.push(el);
-            } else if ($el.hasClass(tabActive)) {
-              previous.push(el);
-            }
-          });
-          var $targets = $(targets);
-          var $previous = $(previous);
-          if (options.immediate || config.immediate) {
-            $targets.addClass(tabActive).each(ix.intro);
-            $previous.removeClass(tabActive);
-            if (!inRedraw) {
-              Webflow.redraw.up();
-            }
-            return;
-          } else {
-            var x = window.scrollX;
-            var y = window.scrollY;
-            currentTab.focus();
-            window.scrollTo(x, y);
-          }
-          if ($previous.length && config.outro) {
-            $previous.each(ix.outro);
-            tram($previous).add("opacity " + config.outro + "ms " + easing, {
-              fallback: safari
-            }).start({
-              opacity: 0
-            }).then(() => fadeIn(config, $previous, $targets));
-          } else {
-            fadeIn(config, $previous, $targets);
-          }
-        }
-        function fadeIn(config, $previous, $targets) {
-          $previous.removeClass(tabActive).css({
-            opacity: "",
-            transition: "",
-            transform: "",
-            width: "",
-            height: ""
-          });
-          $targets.addClass(tabActive).each(ix.intro);
-          Webflow.redraw.up();
-          if (!config.intro) {
-            return tram($targets).set({
-              opacity: 1
-            });
-          }
-          tram($targets).set({
-            opacity: 0
-          }).redraw().add("opacity " + config.intro + "ms " + config.easing, {
-            fallback: safari
-          }).start({
-            opacity: 1
-          });
-        }
-        return api;
-      });
-    }
-  });
-
   // shared/render/plugins/Widget/webflow-maps.js
   var require_webflow_maps = __commonJS({
     "shared/render/plugins/Widget/webflow-maps.js"(exports, module) {
-      var Webflow = require_webflow_lib();
-      Webflow.define("maps", module.exports = function($, _) {
+      var Webflow2 = require_webflow_lib();
+      Webflow2.define("maps", module.exports = function($2, _) {
         var api = {};
-        var $doc = $(document);
+        var $doc = $2(document);
         var google = null;
         var $maps;
         var namespace = ".w-widget-map";
         var googleMapsApiKey = "";
         api.ready = function() {
-          if (!Webflow.env()) {
+          if (!Webflow2.env()) {
             initMaps();
           }
         };
@@ -13595,7 +13541,7 @@
             return;
           }
           if (google === null) {
-            $.getScript("https://maps.googleapis.com/maps/api/js?v=3.31&sensor=false&callback=_wf_maps_loaded&key=" + googleMapsApiKey);
+            $2.getScript("https://maps.googleapis.com/maps/api/js?v=3.31&sensor=false&callback=_wf_maps_loaded&key=" + googleMapsApiKey);
             window._wf_maps_loaded = mapsLoaded;
           } else {
             mapsLoaded();
@@ -13610,15 +13556,15 @@
           }
         }
         function removeListeners() {
-          Webflow.resize.off(resizeMaps);
-          Webflow.redraw.off(resizeMaps);
+          Webflow2.resize.off(resizeMaps);
+          Webflow2.redraw.off(resizeMaps);
         }
         function addListeners() {
-          Webflow.resize.on(resizeMaps);
-          Webflow.redraw.on(resizeMaps);
+          Webflow2.resize.on(resizeMaps);
+          Webflow2.redraw.on(resizeMaps);
         }
         function renderMap(i, el) {
-          var data = $(el).data();
+          var data = $2(el).data();
           getState(el, data);
         }
         function resizeMaps() {
@@ -13631,12 +13577,12 @@
         }
         var store = "w-widget-map";
         function getState(el, data) {
-          var state = $.data(el, store);
+          var state = $2.data(el, store);
           if (state) {
             return state;
           }
           var hasTooltip = typeof data.widgetTooltip === "string" && data.widgetTooltip !== "";
-          var $el = $(el);
+          var $el = $2(el);
           var title = $el.attr("title");
           var markerTitle = "Map pin";
           if (title && data.widgetTooltip) {
@@ -13646,7 +13592,7 @@
           } else if (!title && data.widgetTooltip) {
             markerTitle = `Map pin showing location of ${data.widgetTooltip}`;
           }
-          state = $.data(el, store, {
+          state = $2.data(el, store, {
             // Default options
             latLng: "51.511214,-0.119824",
             tooltip: "",
@@ -13668,7 +13614,7 @@
           var coords = state.latLng.split(",");
           var latLngObj = new google.maps.LatLng(coords[0], coords[1]);
           state.latLngObj = latLngObj;
-          var mapDraggable = !(Webflow.env.touch && !data.enableTouch);
+          var mapDraggable = !(Webflow2.env.touch && !data.enableTouch);
           state.map = new google.maps.Map(el, {
             center: state.latLngObj,
             zoom: state.zoom,
@@ -13735,6 +13681,8 @@
   });
 
   // <stdin>
+  require_objectFitPolyfill_basic();
+  require_webflow_bgvideo();
   require_webflow_brand();
   require_webflow_focus_visible();
   require_webflow_focus();
@@ -13745,7 +13693,6 @@
   require_webflow_touch();
   require_webflow_forms();
   require_webflow_navbar();
-  require_webflow_tabs();
   require_webflow_maps();
 })();
 /*!
